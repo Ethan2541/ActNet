@@ -13,7 +13,7 @@ class ActLayer(nn.Module):
         init (str): Initialization method used for the parameters.
         bias (bool): Whether to include a bias term in the layer.
     """
-    def __init__(self, d, m, N, init="uniform", bias=False):
+    def __init__(self, d, m, N, eps=1e-8, init="uniform", bias=False):
         super(ActLayer, self).__init__()
 
         # Initialization of the parameters can be either uniform or Gaussian
@@ -43,8 +43,8 @@ class ActLayer(nn.Module):
         mean = torch.exp(-self.frequencies**2 / 2) * torch.sin(self.phases)
         var = 1/2 - torch.exp(-2 * self.frequencies**2) * torch.cos(2 * self.phases) / 2 - mean**2
         std = torch.sqrt(var)
-
-        return (torch.sin(torch.einsum('i,bj->bij', self.frequencies, x) + self.phases.unsqueeze(1)) - mean.unsqueeze(1)) / (std.unsqueeze(1) + 1e-8)
+        
+        return (torch.sin(torch.einsum('i,bj->bij', self.frequencies, x) + self.phases.unsqueeze(1)) - mean.unsqueeze(1)) / (std.unsqueeze(1) + self.eps)
 
 
     def forward(self, x):
