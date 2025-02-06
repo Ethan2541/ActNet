@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from . import ActLayer
+from ActLayer import ActLayer
 
 class ActNet(nn.Module):
     """ActNet model.
@@ -20,13 +20,15 @@ class ActNet(nn.Module):
         init (str): Initialization method used for the parameters.
         bias (bool): Whether to include a bias term in the network.
     """
-    def __init__(self, d_in, d_out, d, m, N, L, w0=1.0, eps=1e-8, init="uniform", bias=False):
+    def __init__(self, d_in, d_out, d, m, N, L, w0=1.0, init="uniform", bias=False):
         super(ActNet, self).__init__()
+
+        hidden_dims = [d] + [m] * (L-1)
 
         self.w0 = w0
         self.input_projection = nn.Linear(d_in, d, bias=bias)
-        self.act_layers = nn.Sequential(*[ActLayer(d, m, N, eps, init, bias) for _ in range(L)])
-        self.output_projection = nn.Linear(d, d_out, bias=bias)
+        self.act_layers = nn.Sequential(*[ActLayer(hidden_dims[i], m, N, init, bias) for i in range(L-1)])
+        self.output_projection = nn.Linear(hidden_dims[-1], d_out, bias=bias)
 
 
     def forward(self, x):

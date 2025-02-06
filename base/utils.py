@@ -24,7 +24,7 @@ def train(train_data, test_data, model, optimizer, criterion, n_epochs):
         total_loss = 0
         for inputs, targets in train_data:
             inputs, targets = inputs.to(device), targets.to(device)
-            outputs = model(inputs)
+            outputs = model(inputs).squeeze()
 
             loss = criterion(outputs, targets)
             total_loss += loss.item()
@@ -41,7 +41,7 @@ def train(train_data, test_data, model, optimizer, criterion, n_epochs):
             total_loss = 0
             for inputs, targets in test_data:
                 inputs, targets = inputs.to(device), targets.to(device)
-                outputs = model(inputs)
+                outputs = model(inputs).squeeze()
 
                 loss = criterion(outputs, targets)
                 total_loss += loss.item()
@@ -67,7 +67,7 @@ def adaptive_gradient_clipping(parameters, clip_factor=0.01, eps=1e-3):
         grad_norm = torch.norm(param.grad)
         
         if param_norm > 0 and grad_norm > 0:
-            scale = clip_factor * param_norm / torch.maximum(grad_norm, eps)
+            scale = clip_factor * param_norm / torch.maximum(grad_norm, torch.tensor(eps))
             
             # Clip gradients if necessary
             if scale < 1.0:

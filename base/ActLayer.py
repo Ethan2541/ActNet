@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -12,17 +13,17 @@ class ActLayer(nn.Module):
         init (str): Initialization method used for the parameters.
         bias (bool): Whether to include a bias term in the layer.
     """
-    def __init__(self, d, m, N, eps=1e-8, init="uniform", bias=False):
+    def __init__(self, d, m, N, init="uniform", bias=False):
         super(ActLayer, self).__init__()
 
         # Initialization of the parameters can be either uniform or Gaussian
         # according to Appendix D.1 of the paper
         if init == "uniform":
-            self.betas = nn.Parameter(torch.empty(m, N).uniform_(-torch.sqrt(3*N), torch.sqrt(3*N)))
-            self.lambdas = nn.Parameter(torch.empty(m, d).uniform_(-torch.sqrt(3*d), torch.sqrt(3*d)))
+            self.betas = nn.Parameter(torch.empty(m, N).uniform_(-np.sqrt(3*N), np.sqrt(3*N)))
+            self.lambdas = nn.Parameter(torch.empty(m, d).uniform_(-np.sqrt(3*d), np.sqrt(3*d)))
         elif init == "normal":
-            self.betas = nn.Parameter(torch.empty(m, N).normal_(0, torch.sqrt(N)))
-            self.lambdas = nn.Parameter(torch.empty(m, d).normal_(0, torch.sqrt(d)))
+            self.betas = nn.Parameter(torch.empty(m, N).normal_(0, np.sqrt(N)))
+            self.lambdas = nn.Parameter(torch.empty(m, d).normal_(0, np.sqrt(d)))
             
         # The bias is optional
         if bias:
@@ -37,20 +38,18 @@ class ActLayer(nn.Module):
         self.frequencies = nn.Parameter(torch.randn(N))
         self.phases = nn.Parameter(torch.zeros(N))
 
+
+    def basis_expansion(self, x):
         mean = torch.exp(-self.frequencies**2 / 2) * torch.sin(self.phases)
         var = 1/2 - torch.exp(-2 * self.frequencies**2) * torch.cos(2 * self.phases) / 2 - mean**2
         std = torch.sqrt(var)
 
-        self.basis_functions = lambda x: (torch.sin(self.frequencies * x + self.phases) - mean) / (std + eps)
-
-
-    def basis_expansion(self, x):
-        return self.basis_functions(x)
+        return (torch.sin(torch.einsum('i,bj->bij', self.frequencies, x) + self.phases.unsqueeze(1)) - mean.unsqueeze(1)) / (std.unsqueeze(1) + 1e-8)
 
 
     def forward(self, x):
         B_x = self.basis_expansion(x)
-        out = torch.einsum('ij,jk,ik->k', self.betas, B_x, self.lambdas)
+        out = torch.einsum('bji,kj,ki->bk', B_x, self.betas, self.lambdas)
         if self.bias is not None:
             out += self.bias
-        return out
+        return out.view(-1, self.betas.size(0))
