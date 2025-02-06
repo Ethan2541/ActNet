@@ -37,13 +37,14 @@ class ActLayer(nn.Module):
         # is advised to use AGC to train them (cf. Appendix D.2)
         self.frequencies = nn.Parameter(torch.randn(N))
         self.phases = nn.Parameter(torch.zeros(N))
+        
+        self.eps = eps
 
 
     def basis_expansion(self, x):
         mean = torch.exp(-self.frequencies**2 / 2) * torch.sin(self.phases)
         var = 1/2 - torch.exp(-2 * self.frequencies**2) * torch.cos(2 * self.phases) / 2 - mean**2
         std = torch.sqrt(var)
-        
         return (torch.sin(torch.einsum('i,bj->bij', self.frequencies, x) + self.phases.unsqueeze(1)) - mean.unsqueeze(1)) / (std.unsqueeze(1) + self.eps)
 
 
